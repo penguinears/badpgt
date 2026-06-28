@@ -1,67 +1,93 @@
-<div id="loadingScreen">
-    Loading world...
-</div>
 
-<div id="gameWrapper">
-    <iframe 
-        id="scratchGame"
-        src="https://scratch.mit.edu/projects/1338322892/embed"
-        allowtransparency="true"
-        frameborder="0"
-        scrolling="no"
-        allowfullscreen>
-    </iframe>
-</div>
-
-<style>
-html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
+<!DOCTYPE html>
+<html>
+<head>
+  <title>BadGPT</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+  body {
     background: black;
-}
-
-/* fullscreen cover loading screen */
-#loadingScreen{
-    position:fixed;
-    inset:0;
-    background:black;
-    color:white;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-family:Arial;
-    font-size:20px;
-    z-index:999999;
-}
-
-/* make iframe full screen */
-#gameWrapper, #scratchGame{
-    position:fixed;
-    inset:0;
-    width:100%;
-    height:100%;
-    border:none;
-}
-</style>
-
-<script>
-const iframe = document.getElementById("scratchGame");
-const loader = document.getElementById("loadingScreen");
-
-/* remove loading screen after a short delay */
-setTimeout(() => {
-    loader.style.opacity = "0";
-    loader.style.transition = "0.5s";
-    setTimeout(() => loader.remove(), 500);
-}, 3000);
-
-/* try fullscreen (only works after user interaction in most browsers) */
-document.addEventListener("click", async () => {
-    try {
-        if (iframe.requestFullscreen) {
-            iframe.requestFullscreen();
-        }
-    } catch (e) {}
-}, { once: true });
-</script>
+    color: white;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  .preview-message {
+    background: inherit;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .preview-progress-outer {
+    width: 200px;
+    height: 10px;
+    border: 1px solid white;
+  }
+  .preview-progress-inner {
+    height: 100%;
+    width: 0;
+    background: white;
+  }
+  [hidden] {
+    display: none;
+  }
+  </style>
+</head>
+<body>
+  <div class="preview-message">
+    <noscript>Enable JavaScript</noscript>
+    <div class="preview-progress-outer"><div class="preview-progress-inner"></div></div>
+  </div>
+  <div class="preview-message preview-error" hidden>
+    <div class="preview-error-message"></div>
+    <div>Go back to the original tab and try again</div>
+  </div>
+  <script>
+  (function() {
+    const origin = "https://packager.warp.mistium.com";
+    const err = (message) => {
+      document.querySelector(".preview-error").hidden = false;
+      document.querySelector(".preview-error-message").textContent = "Error: " + message;
+    };
+    if (!window.opener) {
+      err("Can't communicate with main page.");
+      return;
+    }
+    let hasRun = false;
+    const progressBar = document.querySelector(".preview-progress-inner");
+    const progressText = document.querySelector(".preview-progress-text");
+    window.addEventListener("message", (e) => {
+      if (origin !== "*" && e.origin !== location.origin) return;
+      if (hasRun) return;
+      if (e.data.blob) {
+        hasRun = true;
+        const fr = new FileReader();
+        fr.onload = () => {
+          document.open();
+          document.write(fr.result);
+          document.close(); // fixes poor performance in firefox
+        };
+        fr.onerror = () => {
+          err("Something went wrong reading the file: " + fr.error);
+        };
+        fr.readAsText(e.data.blob);
+      }
+      if (typeof e.data.progress === "number") {
+        progressBar.style.width = (e.data.progress * 100) + "%";
+      }
+    });
+    window.opener.postMessage({
+      preview: "hello"
+    }, origin);
+  })();
+  </script>
+</body>
+</html>
